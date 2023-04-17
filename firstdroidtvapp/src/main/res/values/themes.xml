@@ -1,0 +1,4 @@
+<resources>
+
+    <style name="Theme.LifeCycleLife" parent="@style/Theme.Leanback" />
+</resources>
