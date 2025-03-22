@@ -20,6 +20,10 @@ class ScrollingActivity : AppCompatActivity() {
         setContentView(binding.root)
 
         setSupportActionBar(findViewById(R.id.toolbar))
+        if(::binding.isInitialized){
+
+        }
+
         binding.toolbarLayout.title = title
         binding.fab.setOnClickListener { view ->
             Snackbar.make(view, "Replace with your own action", Snackbar.LENGTH_LONG)

@@ -13,7 +13,8 @@ dependencyResolutionManagement {
     }
 }
 rootProject.name = "LifeCycleLife"
-include ':app'
-include ':loginarchapp'
-include ':newsappex'
-include ':firstdroidtvapp'
+//include ':app'
+//include ':loginarchapp'
+//include ':newsappex'
+//include ':firstdroidtvapp'
+include ':lifefoodlife'

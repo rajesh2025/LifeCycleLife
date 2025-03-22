@@ -9,7 +9,7 @@ import java.io.InputStream
 import java.io.OutputStream
 
 @RequiresApi(Build.VERSION_CODES.M)
-class UserSettingsSerializer(
+class `UserSettingsSerializer(
     private val cryptoManager: CryptoManager
 ) : Serializer<UserSettings> {
     override val defaultValue: UserSettings
