@@ -18,3 +18,6 @@ rootProject.name = "LifeCycleLife"
 //include ':newsappex'
 //include ':firstdroidtvapp'
 include ':lifefoodlife'
+include ':lifefoodlife:data'
+include ':lifefoodlife:domain'
+include ':lifefoodlife:presentation'

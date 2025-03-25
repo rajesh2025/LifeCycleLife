@@ -4,44 +4,27 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.tooling.preview.Preview
-import com.ramajogi.lifefoodlife.ui.theme.LifeCycleLifeTheme
+import androidx.activity.viewModels
+import com.ramajogi.lifefoodlife.presentation.ui.screens.LFLMainScreen
+import com.ramajogi.lifefoodlife.presentation.ui.viewmodel.DeliveryViewModel
+import com.ramajogi.lifefoodlife.presentation.ui.viewmodel.RecipeViewModel
+import dagger.hilt.android.AndroidEntryPoint
 
+@AndroidEntryPoint
 class MainActivity : ComponentActivity() {
+    private val recipeViewModel: RecipeViewModel by viewModels()
+    private val deliveryViewModel: DeliveryViewModel by viewModels()
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            LifeCycleLifeTheme {
-                Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    Greeting(
-                        name = "Android",
-                        modifier = Modifier.padding(innerPadding)
-                    )
-                }
+//            LifeCycleLifeTheme {
+                    LFLMainScreen(recipeViewModel, deliveryViewModel)
+//                }
             }
         }
-    }
+
 }
 
-@Composable
-fun Greeting(name: String, modifier: Modifier = Modifier) {
-    Text(
-        text = "Hello $name!",
-        modifier = modifier
-    )
-}
 
-@Preview(showBackground = true)
-@Composable
-fun GreetingPreview() {
-    LifeCycleLifeTheme {
-        Greeting("Android")
-    }
-}
