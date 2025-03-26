@@ -10,17 +10,18 @@ import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.ramajogi.lifefoodlife.domain.model.Recipe
+import com.ramajogi.lifefoodlife.presentation.ui.intent.RecipeIntent
 import com.ramajogi.lifefoodlife.presentation.ui.viewmodel.RecipeViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RecipeListScreen(viewModel: RecipeViewModel, navController: NavController) {
-    val recipes by viewModel.recipes.collectAsState()
+    val state = viewModel.state.collectAsState().value
+
     var selectedCategory by remember { mutableStateOf("Vegan") }
 
     Scaffold(
@@ -51,24 +52,44 @@ fun RecipeListScreen(viewModel: RecipeViewModel, navController: NavController) {
                     viewModel.loadRecipes(it)
                 }
             )
-            if (recipes.isEmpty()) {
-                Text("No recipes found", modifier = Modifier.align(Alignment.CenterHorizontally))
-            } else {
+
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        when {
+            state.isLoading -> {
+                CircularProgressIndicator()
+            }
+//            (state.recipes.isEmpty() && state.errorMessage == null) -> {
+//                Text("No recipes found")
+//            }
+
+            state.errorMessage != null -> {
+                Text(text = state.errorMessage, color = MaterialTheme.colorScheme.error)
+                Spacer(modifier = Modifier.height(8.dp))
+                Button(onClick = { viewModel.processIntent(RecipeIntent.ClearError) }) {
+                    Text("Dismiss")
+                }
+            }
+
+            state.recipes.isNotEmpty() -> {
                 LazyColumn {
-                    items(recipes.size) { index ->
+                    items(state.recipes.size) { index ->
                         AnimatedVisibility(
                             visible = true,
                             enter = slideInVertically(),
                             exit = slideOutVertically()
                         ) {
-                            RecipeItem(recipes[index]) {
-                                viewModel.selectRecipe(recipes[index])
-                                navController.navigate("recipe_detail/${recipes[index].id}")
+                            RecipeItem(state.recipes[index]) {
+                                viewModel.processIntent(RecipeIntent.SelectRecipe(state.recipes[index]))
+                                navController.navigate("recipe_detail/${state.recipes[index].id}")
                             }
                         }
                     }
                 }
             }
+
         }
     }
 }
@@ -90,7 +111,11 @@ fun RecipeItem(recipe: Recipe, onClick: () -> Unit) {
 }
 
 @Composable
-fun CategoryDropdown(categories: List<String>, selectedCategory: String, onCategorySelected: (String) -> Unit) {
+fun CategoryDropdown(
+    categories: List<String>,
+    selectedCategory: String,
+    onCategorySelected: (String) -> Unit
+) {
     var expanded by remember { mutableStateOf(false) }
     Box(modifier = Modifier.padding(16.dp)) {
         OutlinedTextField(

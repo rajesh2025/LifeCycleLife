@@ -8,6 +8,7 @@ import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
 import kotlinx.coroutines.Dispatchers
+import okhttp3.CertificatePinner
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
@@ -38,7 +39,17 @@ object RetrofitClient {
     @BaseOkHttpClient
     fun provideOkHttpClient(): OkHttpClient {
         val logging = HttpLoggingInterceptor().apply { level = HttpLoggingInterceptor.Level.BODY }
+        // SSL Pinning configuration
+//        val certificatePinner = CertificatePinner.Builder()
+//            .add(
+//                "api.healthyfoodapp.com", // Your server's hostname
+//                "sha256/AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=" // Replace with real SHA-256 hash
+//            )
+//            .add("api.healthyfoodapp.com", "sha256/abc456...") // Backup certificate
+//            .build()
+
         return OkHttpClient.Builder()
+//            .certificatePinner(certificatePinner) // Add SSL pinning
             .addInterceptor(logging)
             .build()
     }
@@ -48,7 +59,17 @@ object RetrofitClient {
     @AuthOkHttpClient
     fun provideOkHttpClientWithAuth(interceptor: AuthInterceptor): OkHttpClient {
         val logging = HttpLoggingInterceptor().apply { level = HttpLoggingInterceptor.Level.BODY }
+        // SSL Pinning configuration (same for authenticated client)
+//        val certificatePinner = CertificatePinner.Builder()
+//            .add(
+//                "api.healthyfoodapp.com",
+//                "sha256/AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=" // Replace with real hash
+//            )
+//            .add("api.healthyfoodapp.com", "sha256/abc456...") // Backup certificate
+//            .build()
+
         return OkHttpClient.Builder()
+//            .certificatePinner(certificatePinner) // Add SSL pinning
             .addInterceptor(interceptor)
             .addInterceptor(logging)
             .build()

@@ -9,6 +9,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
+import com.ramajogi.lifefoodlife.presentation.ui.intent.RecipeIntent
 import com.ramajogi.lifefoodlife.presentation.ui.viewmodel.DeliveryViewModel
 import com.ramajogi.lifefoodlife.presentation.ui.viewmodel.RecipeViewModel
 
@@ -21,19 +22,18 @@ fun RecipeDetailScreen(
     recipeId: Int?,
     navController: NavController
 ) {
-    val recipe by recipeViewModel.selectedRecipe.collectAsState()
-    val nutrition by recipeViewModel.nutritionInfo.collectAsState()
-    val order by deliveryViewModel.deliveryOrder.collectAsState()
-
+    val recipeState = recipeViewModel.state.collectAsState().value
+    val deliveryState = deliveryViewModel.state.collectAsState().value
     LaunchedEffect(recipeId) {
-        recipe?.takeIf { it.id == recipeId } ?: recipeViewModel.loadRecipes("Vegan") // Fallback
+        recipeState.takeIf { it.selectedRecipe?.id == recipeId }
+            ?: recipeViewModel.processIntent(RecipeIntent.LoadRecipes("Vegan")) // Fallback
     }
 
     Scaffold(
         topBar = { TopAppBar(title = { Text("Recipe Details") }) }
     ) { padding ->
-        AnimatedVisibility(visible = recipe != null, enter = expandIn()) {
-            recipe?.let {
+        AnimatedVisibility(visible = recipeState.selectedRecipe != null, enter = expandIn()) {
+            recipeState.selectedRecipe?.let {
                 Column(
                     modifier = Modifier
                         .padding(padding)
@@ -42,15 +42,21 @@ fun RecipeDetailScreen(
                 ) {
                     Text(it.title, style = MaterialTheme.typography.headlineMedium)
                     Text("Category: ${it.category}", style = MaterialTheme.typography.bodyLarge)
-                    Text("Instructions: ${it.instructions}", style = MaterialTheme.typography.bodyMedium)
-                    nutrition?.let { info ->
-                        Text("Total Calories: ${info.totalCalories}", style = MaterialTheme.typography.bodyMedium)
+                    Text(
+                        "Instructions: ${it.instructions}",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                    recipeState.nutritionInfo?.let { info ->
+                        Text(
+                            "Total Calories: ${info.totalCalories}",
+                            style = MaterialTheme.typography.bodyMedium
+                        )
                     }
                     Spacer(modifier = Modifier.height(16.dp))
                     Button(
                         onClick = {
                             deliveryViewModel.placeOrder(it.id)
-                            order?.orderId?.let { orderId ->
+                            deliveryState.deliveryOrder?.orderId?.let { orderId ->
                                 navController.navigate("delivery_tracking/$orderId")
                             }
                         },

@@ -56,8 +56,8 @@ object DataModule {
 
     @Provides
     @Singleton
-    fun provideRecipeRepository(dao: RecipeDao): RecipeRepository {
-        return RecipeRepositoryImpl(dao)
+    fun provideRecipeRepository(dao: RecipeDao, api: ApiService): RecipeRepository {
+        return RecipeRepositoryImpl(dao,api)
     }
 
     @Provides

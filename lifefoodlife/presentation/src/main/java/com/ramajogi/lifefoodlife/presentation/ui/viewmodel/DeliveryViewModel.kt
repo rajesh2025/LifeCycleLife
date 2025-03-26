@@ -1,15 +1,22 @@
 package com.ramajogi.lifefoodlife.presentation.ui.viewmodel
 
+import androidx.annotation.VisibleForTesting
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.ramajogi.lifefoodlife.domain.model.DeliveryOrder
 import com.ramajogi.lifefoodlife.domain.model.DeliveryStatus
+import com.ramajogi.lifefoodlife.domain.model.LFLResult
 import com.ramajogi.lifefoodlife.domain.usecase.PlaceDeliveryOrder
 import com.ramajogi.lifefoodlife.domain.usecase.TrackDelivery
 import com.ramajogi.lifefoodlife.domain.usecase.UpdateDeliveryStatus
+import com.ramajogi.lifefoodlife.presentation.ui.intent.DeliveryIntent
+import com.ramajogi.lifefoodlife.presentation.ui.intent.DeliveryState
+import com.ramajogi.lifefoodlife.presentation.utils.Utility
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -19,46 +26,92 @@ class DeliveryViewModel @Inject constructor(
     private val trackDelivery: TrackDelivery,
     private val updateDeliveryStatus: UpdateDeliveryStatus
 ) : ViewModel() {
-    private val _deliveryOrder = MutableStateFlow<DeliveryOrder?>(null)
-    val deliveryOrder: StateFlow<DeliveryOrder?> = _deliveryOrder
 
-    private val _errorMessage = MutableStateFlow<String?>(null)
-    val errorMessage: StateFlow<String?> = _errorMessage
+    private val _state = MutableStateFlow(DeliveryState())
+    val state: StateFlow<DeliveryState> = _state.asStateFlow()
+
+    private val exceptionHandler = CoroutineExceptionHandler { _, throwable ->
+        _state.value = _state.value.copy(
+            isLoading = false, errorMessage = when (throwable) {
+                is IllegalStateException -> throwable.message
+                else -> "Error: ${throwable.message}"
+            }
+        )
+    }
+
+    fun processIntent(intent: DeliveryIntent) {
+        when (intent) {
+            is DeliveryIntent.PlaceOrder -> placeOrder(intent.recipeId)
+            is DeliveryIntent.TrackOrder -> trackOrder(intent.orderId)
+            is DeliveryIntent.UpdateStatus -> updateStatus(intent.orderId, intent.newStatus)
+            DeliveryIntent.ClearError -> clearError()
+        }
+    }
 
     fun placeOrder(recipeId: Int) {
         viewModelScope.launch {
-            try {
-                val order = placeDeliveryOrder(recipeId)
-                _deliveryOrder.value = order
-            } catch (e: Exception) {
-                _errorMessage.value = "Failed to place order: ${e.message}"
+            _state.value = _state.value.copy(isLoading = true, errorMessage = null)
+
+            when (val result = placeDeliveryOrder(recipeId)) {
+                is LFLResult.Success -> {
+                    _state.value = _state.value.copy(
+                        deliveryOrder = result.data, isLoading = false
+                    )
+                }
+                is LFLResult.Failure -> {
+                    _state.value = _state.value.copy(
+                        isLoading = false,
+                        errorMessage = Utility.filterDeliveryErrorMsg(error = result.error)
+                    )
+                }
             }
         }
     }
 
     fun trackOrder(orderId: String) {
-        viewModelScope.launch {
-            _deliveryOrder.value = trackDelivery(orderId)
+        viewModelScope.launch(exceptionHandler) {
+            _state.value = _state.value.copy(isLoading = true, errorMessage = null)
+            when (val result = trackDelivery(orderId)) {
+                is LFLResult.Success -> {
+                    _state.value = _state.value.copy(
+                        deliveryOrder = result.data, isLoading = false
+                    )
+                }
+                is LFLResult.Failure -> _state.value = _state.value.copy(
+                    isLoading = false,
+                    errorMessage = Utility.filterDeliveryErrorMsg(error = result.error)
+                )
+            }
         }
     }
 
     fun updateStatus(orderId: String, newStatus: DeliveryStatus) {
-        viewModelScope.launch {
-            try {
-                val updatedOrder = updateDeliveryStatus(orderId, newStatus)
-                _deliveryOrder.value = updatedOrder
-                if (updatedOrder == null) _errorMessage.value = "Order not found"
-            } catch (e: IllegalStateException) {
-                _errorMessage.value = e.message
+        viewModelScope.launch(exceptionHandler) {
+            _state.value = _state.value.copy(isLoading = true, errorMessage = null)
+            when (val result = updateDeliveryStatus(orderId, newStatus)) {
+                is LFLResult.Success -> {
+                    _state.value = _state.value.copy(
+                        deliveryOrder = result.data, isLoading = false
+                    )
+                }
+                is LFLResult.Failure -> {
+                    _state.value = _state.value.copy(
+                        isLoading = false,
+                        errorMessage = Utility.filterDeliveryErrorMsg(error = result.error)
+                    )
+                }
             }
         }
     }
 
     fun clearError() {
-        _errorMessage.value = null
+        _state.value = _state.value.copy(errorMessage = null)
     }
 
+    @VisibleForTesting(otherwise = VisibleForTesting.PRIVATE)
     fun setDeliveryOrder(order: DeliveryOrder?) {
-        _deliveryOrder.value = order
+        _state.value = _state.value.copy(
+            deliveryOrder = order, isLoading = false
+        )
     }
 }

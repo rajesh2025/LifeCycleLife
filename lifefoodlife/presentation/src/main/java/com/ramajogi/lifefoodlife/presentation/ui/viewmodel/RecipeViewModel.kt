@@ -1,13 +1,20 @@
 package com.ramajogi.lifefoodlife.presentation.ui.viewmodel
 
+import androidx.annotation.VisibleForTesting
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.ramajogi.lifefoodlife.domain.model.LFLResult
 import com.ramajogi.lifefoodlife.domain.model.Recipe
 import com.ramajogi.lifefoodlife.domain.usecase.CalculateNutrition
 import com.ramajogi.lifefoodlife.domain.usecase.GetRecipesByCategory
+import com.ramajogi.lifefoodlife.presentation.ui.intent.RecipeIntent
+import com.ramajogi.lifefoodlife.presentation.ui.intent.RecipeState
+import com.ramajogi.lifefoodlife.presentation.utils.Utility
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -16,27 +23,74 @@ class RecipeViewModel @Inject constructor(
     private val getRecipesByCategory: GetRecipesByCategory,
     private val calculateNutrition: CalculateNutrition
 ) : ViewModel() {
-    private val _recipes = MutableStateFlow<List<Recipe>>(emptyList())
-    val recipes: StateFlow<List<Recipe>> = _recipes
 
-    private val _selectedRecipe = MutableStateFlow<Recipe?>(null)
-    val selectedRecipe: StateFlow<Recipe?> = _selectedRecipe
+    private val exceptionHandler = CoroutineExceptionHandler { _, throwable ->
+        _state.value = _state.value.copy(
+            isLoading = false,
+            errorMessage = "Error: ${throwable.message}"
+        )
+    }
 
-    private val _nutritionInfo = MutableStateFlow<CalculateNutrition.NutritionInfo?>(null)
-    val nutritionInfo: StateFlow<CalculateNutrition.NutritionInfo?> = _nutritionInfo
+    private val _state = MutableStateFlow(RecipeState())
+    val state: StateFlow<RecipeState> = _state.asStateFlow()
 
-    fun loadRecipes(category: String) {
-        viewModelScope.launch {
-            _recipes.value = getRecipesByCategory(category)
+    fun processIntent(intent: RecipeIntent) {
+        when (intent) {
+            is RecipeIntent.LoadRecipes -> loadRecipes(intent.category)
+            is RecipeIntent.SelectRecipe -> selectRecipe(intent.recipe)
+            RecipeIntent.ClearError -> clearError()
         }
     }
 
-    fun selectRecipe(recipe: Recipe) {
-        _selectedRecipe.value = recipe
-        _nutritionInfo.value = calculateNutrition(recipe)
+    fun loadRecipes(category: String) {
+        viewModelScope.launch(exceptionHandler) {
+            _state.value = _state.value.copy(isLoading = true, errorMessage = null)
+
+            when (val result = getRecipesByCategory(category)) {
+                is LFLResult.Success ->{
+                    _state.value = _state.value.copy(
+                        recipes = result.data,
+                        isLoading = false
+                    )
+            }
+                is LFLResult.Failure ->{
+                    _state.value = _state.value.copy(
+                        isLoading = false,
+                        errorMessage = Utility.filterRecipeErrorMsg(result.error)
+                    )
+                }
+            }
+        }
     }
 
+
+    fun selectRecipe(recipe: Recipe) {
+        viewModelScope.launch(exceptionHandler) {
+            when (val result = calculateNutrition(recipe)) {
+                is LFLResult.Success -> {
+                    _state.value = _state.value.copy(
+                        selectedRecipe = recipe,
+                        nutritionInfo = result.data
+                    )
+                }
+                is LFLResult.Failure -> {
+                    _state.value = _state.value.copy(
+                        selectedRecipe = recipe,
+                        errorMessage = Utility.filterRecipeErrorMsg(result.error)
+                    )
+                }
+            }
+        }
+    }
+
+    fun clearError() {
+        _state.value = _state.value.copy(errorMessage = null)
+    }
+
+    @VisibleForTesting(otherwise = VisibleForTesting.PRIVATE)
     fun setRecipes(recipes: List<Recipe>) {
-        _recipes.value = recipes
+        _state.value = _state.value.copy(
+            recipes = recipes, isLoading = false
+        )
     }
 }
